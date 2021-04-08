@@ -1,10 +1,12 @@
 import sys
 from io import BytesIO
-# Этот класс поможет нам сделать картинку из потока байт
 
 import requests
 from PIL import Image
+
 from set_spn import set_spn
+
+# Этот класс поможет нам сделать картинку из потока байт
 
 # Пусть наше приложение предполагает запуск:
 # python search.py Москва, ул. Ак. Королева, 12
@@ -21,7 +23,6 @@ geocoder_params = {
 response = requests.get(geocoder_api_server, params=geocoder_params)
 
 if not response:
-    # обработка ошибочной ситуации
     pass
 
 # Преобразуем ответ в json-объект
@@ -34,6 +35,38 @@ toponym_coodrinates = toponym["Point"]["pos"]
 # Долгота и широта:
 toponym_longitude, toponym_lattitude = toponym_coodrinates.split(" ")
 
+search_api_server = "https://search-maps.yandex.ru/v1/"
+api_key = "d2e49fb6-1631-4996-8c9e-c9c3ac712c9f"
+
+search_params = {
+    "apikey": api_key,
+    "text": "аптека",
+    "lang": "ru_RU",
+    "ll": ",".join([toponym_longitude, toponym_lattitude]),
+    "type": "biz"
+}
+
+response = requests.get(search_api_server, params=search_params)
+print(response)
+if not response:
+    pass
+
+json_response = response.json()
+
+# Получаем первую найденную организацию.
+organization = json_response["features"][0]
+# Название организации.
+org_name = organization["properties"]["CompanyMetaData"]["name"]
+# Адрес организации.
+org_address = organization["properties"]["CompanyMetaData"]["address"]
+org_time = organization["properties"]["CompanyMetaData"]["Hours"]["text"]
+
+# Получаем координаты ответа.
+point = organization["geometry"]["coordinates"]
+print(org_name, "\n",
+      org_address, "\n",
+      org_time)
+
 spn = set_spn(toponym)
 
 # Собираем параметры для запроса к StaticMapsAPI:
@@ -42,12 +75,12 @@ map_params = {
     "spn": ",".join(spn),
     "l": "map",
     "pt": ",".join([toponym_longitude, toponym_lattitude, "comma"])
+          + "~" + ",".join([str(point[0]), str(point[1]), "pm2dgl"])
 }
 
 map_api_server = "http://static-maps.yandex.ru/1.x/"
 # ... и выполняем запрос
 response = requests.get(map_api_server, params=map_params)
-print(response.url)
 
 Image.open(BytesIO(
     response.content)).show()
