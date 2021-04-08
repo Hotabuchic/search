@@ -47,25 +47,18 @@ search_params = {
 }
 
 response = requests.get(search_api_server, params=search_params)
-print(response)
 if not response:
     pass
 
 json_response = response.json()
 
 # Получаем первую найденную организацию.
-organization = json_response["features"][0]
-# Название организации.
-org_name = organization["properties"]["CompanyMetaData"]["name"]
-# Адрес организации.
-org_address = organization["properties"]["CompanyMetaData"]["address"]
-org_time = organization["properties"]["CompanyMetaData"]["Hours"]["text"]
+points = [",".join([toponym_longitude, toponym_lattitude, "comma"])]
+organization = json_response["features"][:10]
 
-# Получаем координаты ответа.
-point = organization["geometry"]["coordinates"]
-print(org_name, "\n",
-      org_address, "\n",
-      org_time)
+for i in organization:
+    point = i["geometry"]["coordinates"]
+    points.append(",".join([str(point[0]), str(point[1]), "pm2dgl"]))
 
 spn = set_spn(toponym)
 
@@ -74,8 +67,7 @@ map_params = {
     "ll": ",".join([toponym_longitude, toponym_lattitude]),
     "spn": ",".join(spn),
     "l": "map",
-    "pt": ",".join([toponym_longitude, toponym_lattitude, "comma"])
-          + "~" + ",".join([str(point[0]), str(point[1]), "pm2dgl"])
+    "pt": "~".join(points)
 }
 
 map_api_server = "http://static-maps.yandex.ru/1.x/"
